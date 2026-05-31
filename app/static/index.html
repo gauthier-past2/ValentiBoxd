@@ -1,0 +1,748 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ValentiBoxd</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=DM+Mono:wght@300;400&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0e0c0a;
+    --surface: #161310;
+    --border: #2a2420;
+    --accent: #e8c547;
+    --accent-dim: #a88c2f;
+    --text: #f0ebe3;
+    --text-dim: #7a6f65;
+    --red: #c0392b;
+    --green: #27ae60;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 60px 24px;
+  }
+
+  /* Grain overlay */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 0;
+    opacity: 0.4;
+  }
+
+  .container {
+    width: 100%;
+    max-width: 640px;
+    position: relative;
+    z-index: 1;
+  }
+
+  header {
+    text-align: center;
+    margin-bottom: 56px;
+  }
+
+  .logo {
+    font-family: 'Playfair Display', serif;
+    font-size: 3rem;
+    font-weight: 700;
+    letter-spacing: -1px;
+    color: var(--text);
+  }
+
+  .logo span {
+    color: var(--accent);
+    font-style: italic;
+  }
+
+  .tagline {
+    margin-top: 8px;
+    font-size: 0.7rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+  }
+
+  /* Steps indicator */
+  .steps {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0;
+    margin-bottom: 40px;
+  }
+
+  .step {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.65rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    transition: color 0.3s;
+  }
+
+  .step.active { color: var(--accent); }
+  .step.done { color: var(--green); }
+
+  .step-num {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    border: 1px solid currentColor;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.6rem;
+    flex-shrink: 0;
+  }
+
+  .step-line {
+    width: 40px;
+    height: 1px;
+    background: var(--border);
+    margin: 0 8px;
+  }
+
+  /* Panels */
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    padding: 40px;
+    display: none;
+    animation: fadeIn 0.4s ease;
+  }
+
+  .panel.active { display: block; }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* Upload zone */
+  .upload-zone {
+    border: 1px dashed var(--border);
+    border-radius: 2px;
+    padding: 60px 40px;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 0.2s, background 0.2s;
+    position: relative;
+  }
+
+  .upload-zone:hover, .upload-zone.dragging {
+    border-color: var(--accent);
+    background: rgba(232, 197, 71, 0.03);
+  }
+
+  .upload-zone input {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    cursor: pointer;
+    width: 100%;
+    height: 100%;
+  }
+
+  .upload-icon {
+    font-size: 2.5rem;
+    margin-bottom: 16px;
+    display: block;
+  }
+
+  .upload-label {
+    font-size: 0.75rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+  }
+
+  .upload-label strong {
+    color: var(--accent);
+    font-weight: 400;
+  }
+
+  .preview-img {
+    width: 100%;
+    max-height: 320px;
+    object-fit: contain;
+    border-radius: 2px;
+    margin-bottom: 24px;
+    display: none;
+  }
+
+  /* Buttons */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 28px;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.7rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    border: none;
+    border-radius: 2px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .btn-primary {
+    background: var(--accent);
+    color: #0e0c0a;
+    width: 100%;
+    justify-content: center;
+    margin-top: 24px;
+  }
+
+  .btn-primary:hover { background: #f0d060; }
+  .btn-primary:disabled { background: var(--border); color: var(--text-dim); cursor: not-allowed; }
+
+  .btn-secondary {
+    background: transparent;
+    color: var(--text-dim);
+    border: 1px solid var(--border);
+  }
+
+  .btn-secondary:hover { border-color: var(--text-dim); color: var(--text); }
+
+  .btn-ghost {
+    background: transparent;
+    color: var(--accent);
+    padding: 0;
+    font-size: 0.65rem;
+  }
+
+  /* Loading state */
+  .loading {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+    padding: 40px;
+    text-align: center;
+  }
+
+  .loading.active { display: flex; }
+
+  .spinner {
+    width: 32px;
+    height: 32px;
+    border: 2px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .loading-text {
+    font-size: 0.7rem;
+    letter-spacing: 0.1em;
+    color: var(--text-dim);
+  }
+
+  /* Title list */
+  .list-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 20px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .list-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.1rem;
+    font-style: italic;
+  }
+
+  .list-count {
+    font-size: 0.65rem;
+    color: var(--text-dim);
+    letter-spacing: 0.1em;
+  }
+
+  .titles-list {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    max-height: 400px;
+    overflow-y: auto;
+    margin-bottom: 24px;
+    padding-right: 4px;
+  }
+
+  .titles-list::-webkit-scrollbar { width: 3px; }
+  .titles-list::-webkit-scrollbar-track { background: var(--border); }
+  .titles-list::-webkit-scrollbar-thumb { background: var(--accent-dim); }
+
+  .title-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 12px;
+    border: 1px solid transparent;
+    border-radius: 2px;
+    transition: border-color 0.15s;
+  }
+
+  .title-item:hover { border-color: var(--border); }
+
+  .title-item input[type="text"] {
+    flex: 1;
+    background: transparent;
+    border: none;
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    font-size: 0.8rem;
+    outline: none;
+    padding: 2px 0;
+    border-bottom: 1px solid transparent;
+    transition: border-color 0.15s;
+  }
+
+  .title-item input[type="text"]:focus {
+    border-bottom-color: var(--accent);
+  }
+
+  .title-item input[type="checkbox"] {
+    appearance: none;
+    width: 16px;
+    height: 16px;
+    border: 1px solid var(--text-dim);
+    border-radius: 2px;
+    cursor: pointer;
+    flex-shrink: 0;
+    position: relative;
+    transition: all 0.15s;
+  }
+
+  .title-item input[type="checkbox"]:checked {
+    background: var(--accent);
+    border-color: var(--accent);
+  }
+
+  .title-item input[type="checkbox"]:checked::after {
+    content: '✓';
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    color: #0e0c0a;
+    line-height: 16px;
+    text-align: center;
+    width: 100%;
+  }
+
+  .delete-btn {
+    background: none;
+    border: none;
+    color: var(--text-dim);
+    cursor: pointer;
+    font-size: 0.8rem;
+    padding: 2px 4px;
+    opacity: 0;
+    transition: opacity 0.15s, color 0.15s;
+    flex-shrink: 0;
+  }
+
+  .title-item:hover .delete-btn { opacity: 1; }
+  .delete-btn:hover { color: var(--red); }
+
+  .actions {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+
+  .actions .btn-primary { margin-top: 0; flex: 1; }
+
+  /* Success panel */
+  .success-icon {
+    font-size: 3rem;
+    text-align: center;
+    display: block;
+    margin-bottom: 20px;
+  }
+
+  .success-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.4rem;
+    text-align: center;
+    margin-bottom: 8px;
+  }
+
+  .success-sub {
+    font-size: 0.7rem;
+    color: var(--text-dim);
+    text-align: center;
+    letter-spacing: 0.08em;
+    margin-bottom: 32px;
+    line-height: 1.8;
+  }
+
+  .instructions {
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    padding: 20px 24px;
+    margin-bottom: 24px;
+  }
+
+  .instructions-title {
+    font-size: 0.6rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    margin-bottom: 14px;
+  }
+
+  .instructions ol {
+    padding-left: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .instructions li {
+    font-size: 0.75rem;
+    color: var(--text-dim);
+    line-height: 1.6;
+  }
+
+  .instructions li strong { color: var(--text); font-weight: 400; }
+
+  .restart-btn {
+    display: block;
+    width: 100%;
+    text-align: center;
+    margin-top: 16px;
+  }
+
+  /* Error message */
+  .error-msg {
+    display: none;
+    padding: 12px 16px;
+    background: rgba(192, 57, 43, 0.1);
+    border: 1px solid rgba(192, 57, 43, 0.3);
+    border-radius: 2px;
+    font-size: 0.7rem;
+    color: #e74c3c;
+    margin-top: 16px;
+    letter-spacing: 0.05em;
+  }
+
+  .error-msg.active { display: block; }
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <div class="logo">Valenti<span>Boxd</span></div>
+    <div class="tagline">Scan your film list — export to Letterboxd</div>
+  </header>
+
+  <div class="steps">
+    <div class="step active" id="step-1">
+      <div class="step-num">1</div>
+      <span>Scan</span>
+    </div>
+    <div class="step-line"></div>
+    <div class="step" id="step-2">
+      <div class="step-num">2</div>
+      <span>Review</span>
+    </div>
+    <div class="step-line"></div>
+    <div class="step" id="step-3">
+      <div class="step-num">3</div>
+      <span>Export</span>
+    </div>
+  </div>
+
+  <!-- Panel 1: Upload -->
+  <div class="panel active" id="panel-upload">
+    <img class="preview-img" id="preview" alt="Preview">
+    <div class="upload-zone" id="drop-zone">
+      <input type="file" id="file-input" accept="image/*">
+      <span class="upload-icon">📷</span>
+      <div class="upload-label">
+        <strong>Click to upload</strong> or drag & drop<br>
+        a photo of your handwritten film list
+      </div>
+    </div>
+    <button class="btn btn-primary" id="scan-btn" disabled>
+      Scan image
+    </button>
+    <div class="error-msg" id="upload-error"></div>
+
+    <div class="loading" id="scan-loading">
+      <div class="spinner"></div>
+      <div class="loading-text">Reading your handwriting...</div>
+    </div>
+  </div>
+
+  <!-- Panel 2: Review titles -->
+  <div class="panel" id="panel-review">
+    <div class="list-header">
+      <span class="list-title">Detected titles</span>
+      <span class="list-count" id="count-label"></span>
+    </div>
+    <ul class="titles-list" id="titles-list"></ul>
+    <div class="actions">
+      <button class="btn btn-secondary" id="back-btn">← Back</button>
+      <button class="btn btn-primary" id="generate-btn">Generate CSV</button>
+    </div>
+    <div class="error-msg" id="review-error"></div>
+
+    <div class="loading" id="generate-loading">
+      <div class="spinner"></div>
+      <div class="loading-text">Looking up films on TMDB...</div>
+    </div>
+  </div>
+
+  <!-- Panel 3: Done -->
+  <div class="panel" id="panel-done">
+    <span class="success-icon">🎬</span>
+    <div class="success-title">Your watchlist is ready</div>
+    <div class="success-sub" id="done-sub"></div>
+    <div class="instructions">
+      <div class="instructions-title">How to import into Letterboxd</div>
+      <ol>
+        <li>Go to <strong>letterboxd.com</strong> and sign in</li>
+        <li>Open your <strong>Watchlist</strong> page</li>
+        <li>Click <strong>Import films to watchlist...</strong></li>
+        <li>Upload the CSV file you just downloaded</li>
+      </ol>
+    </div>
+    <button class="btn btn-primary restart-btn" id="restart-btn">
+      Scan another list
+    </button>
+  </div>
+</div>
+
+<script>
+  const API = 'http://localhost:8000'
+
+  // State
+  let selectedFile = null
+  let detectedTitles = []
+
+  // Elements
+  const fileInput = document.getElementById('file-input')
+  const dropZone = document.getElementById('drop-zone')
+  const preview = document.getElementById('preview')
+  const scanBtn = document.getElementById('scan-btn')
+  const scanLoading = document.getElementById('scan-loading')
+  const uploadError = document.getElementById('upload-error')
+
+  const titlesList = document.getElementById('titles-list')
+  const countLabel = document.getElementById('count-label')
+  const generateBtn = document.getElementById('generate-btn')
+  const generateLoading = document.getElementById('generate-loading')
+  const reviewError = document.getElementById('review-error')
+  const backBtn = document.getElementById('back-btn')
+  const restartBtn = document.getElementById('restart-btn')
+  const doneSub = document.getElementById('done-sub')
+
+  // --- Panels ---
+  function showPanel(id) {
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'))
+    document.getElementById('panel-' + id).classList.add('active')
+    updateSteps(id)
+  }
+
+  function updateSteps(panel) {
+    const map = { upload: 1, review: 2, done: 3 }
+    const current = map[panel]
+    for (let i = 1; i <= 3; i++) {
+      const el = document.getElementById('step-' + i)
+      el.classList.remove('active', 'done')
+      if (i < current) el.classList.add('done')
+      else if (i === current) el.classList.add('active')
+    }
+  }
+
+  // --- File selection ---
+  fileInput.addEventListener('change', e => {
+    if (e.target.files[0]) selectFile(e.target.files[0])
+  })
+
+  dropZone.addEventListener('dragover', e => {
+    e.preventDefault()
+    dropZone.classList.add('dragging')
+  })
+
+  dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragging'))
+
+  dropZone.addEventListener('drop', e => {
+    e.preventDefault()
+    dropZone.classList.remove('dragging')
+    if (e.dataTransfer.files[0]) selectFile(e.dataTransfer.files[0])
+  })
+
+  function selectFile(file) {
+    selectedFile = file
+    const url = URL.createObjectURL(file)
+    preview.src = url
+    preview.style.display = 'block'
+    dropZone.style.display = 'none'
+    scanBtn.disabled = false
+    uploadError.classList.remove('active')
+  }
+
+  // --- Scan ---
+  scanBtn.addEventListener('click', async () => {
+    if (!selectedFile) return
+
+    scanBtn.style.display = 'none'
+    scanLoading.classList.add('active')
+    uploadError.classList.remove('active')
+
+    try {
+      const formData = new FormData()
+      formData.append('file', selectedFile)
+
+      const res = await fetch(`${API}/scan`, { method: 'POST', body: formData })
+      if (!res.ok) throw new Error('Scan failed')
+
+      const data = await res.json()
+      detectedTitles = data.titles.filter(t => t.trim())
+
+      renderTitles(detectedTitles)
+      showPanel('review')
+    } catch (err) {
+      showError(uploadError, 'Could not scan the image. Check your connection and try again.')
+    } finally {
+      scanBtn.style.display = 'block'
+      scanLoading.classList.remove('active')
+    }
+  })
+
+  // --- Render titles ---
+  function renderTitles(titles) {
+    titlesList.innerHTML = ''
+    titles.forEach((title, i) => {
+      const li = document.createElement('li')
+      li.className = 'title-item'
+      li.innerHTML = `
+        <input type="checkbox" checked data-index="${i}">
+        <input type="text" value="${escapeHtml(title)}" data-index="${i}">
+        <button class="delete-btn" data-index="${i}" title="Remove">✕</button>
+      `
+      titlesList.appendChild(li)
+    })
+
+    titlesList.querySelectorAll('.delete-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        btn.closest('.title-item').remove()
+        updateCount()
+      })
+    })
+
+    updateCount()
+  }
+
+  function updateCount() {
+    const total = titlesList.querySelectorAll('.title-item').length
+    const checked = titlesList.querySelectorAll('input[type=checkbox]:checked').length
+    countLabel.textContent = `${checked} / ${total} selected`
+  }
+
+  titlesList.addEventListener('change', updateCount)
+
+  function escapeHtml(str) {
+    return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')
+  }
+
+  // --- Back ---
+  backBtn.addEventListener('click', () => {
+    preview.style.display = 'none'
+    dropZone.style.display = 'block'
+    scanBtn.disabled = true
+    selectedFile = null
+    showPanel('upload')
+  })
+
+  // --- Generate CSV ---
+  generateBtn.addEventListener('click', async () => {
+    const items = titlesList.querySelectorAll('.title-item')
+    const titles = []
+    items.forEach(item => {
+      const checkbox = item.querySelector('input[type=checkbox]')
+      const text = item.querySelector('input[type=text]').value.trim()
+      if (checkbox.checked && text) titles.push(text)
+    })
+
+    if (!titles.length) {
+      showError(reviewError, 'No titles selected.')
+      return
+    }
+
+    generateBtn.style.display = 'none'
+    generateLoading.classList.add('active')
+    reviewError.classList.remove('active')
+
+    try {
+      const res = await fetch(`${API}/generate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(titles)
+      })
+      if (!res.ok) throw new Error('Generate failed')
+
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = 'watchlist.csv'
+      a.click()
+      URL.revokeObjectURL(url)
+
+      doneSub.textContent = `${titles.length} film${titles.length > 1 ? 's' : ''} exported — import the CSV on letterboxd.com/watchlist`
+      showPanel('done')
+    } catch (err) {
+      showError(reviewError, 'Could not generate the CSV. Try again.')
+    } finally {
+      generateBtn.style.display = 'block'
+      generateLoading.classList.remove('active')
+    }
+  })
+
+  // --- Restart ---
+  restartBtn.addEventListener('click', () => {
+    selectedFile = null
+    fileInput.value = ''
+    preview.style.display = 'none'
+    dropZone.style.display = 'block'
+    scanBtn.disabled = true
+    titlesList.innerHTML = ''
+    showPanel('upload')
+  })
+
+  function showError(el, msg) {
+    el.textContent = msg
+    el.classList.add('active')
+  }
+</script>
+</body>
+</html>

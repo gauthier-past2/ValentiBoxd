@@ -1,39 +1,40 @@
-from dotenv import load_dotenv
+from fastapi import FastAPI, UploadFile, File
+from fastapi.responses import StreamingResponse
+from fastapi.staticfiles import StaticFiles
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import HTMLResponse
 import os
-from google import genai
-from google.genai import types
-import gradio as gr
-from PIL import Image
 import io
+from app.services.ocr import OCR
+from app.services.tmdb import MakeCSV
 
-load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), '..', '.env'))
-client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
+app = FastAPI()
 
-def OCR(image):
-    if image is None:
-        return "Please upload an image."
-
-    # Convert PIL image to bytes
-    buffer = io.BytesIO()
-    image.save(buffer, format="JPEG")
-    image_bytes = buffer.getvalue()
-
-    response = client.models.generate_content(
-        model="gemini-2.5-flash",
-        contents=[
-            types.Part.from_bytes(data=image_bytes, mime_type="image/jpeg"),
-            "Extract all the film titles from this handwritten list. Return only the titles, one per line, nothing else. Put the result in a csv format."
-        ]
-    )
-    
-    return response.text
-
-demo = gr.Interface(
-    fn=OCR,
-    inputs=gr.Image(type="pil", label="Upload an image"),
-    outputs=gr.Textbox(label="Detected text"),
-    title="ValentiBoxd OCR",
-    description="Upload a photo of your film list to extract titles.",
+app.mount(
+    "/static",
+    StaticFiles(directory=os.path.join(os.path.dirname(__file__), "static")),
+    name="static"
 )
 
-demo.launch(share=True)
+@app.get("/health")
+def health():
+    return {"status": "ok"}
+
+@app.post("/scan")
+async def scan(file: UploadFile = File(...)):
+    image_bytes = await file.read()
+    titles = OCR(image_bytes)
+    return {"titles": titles.strip().split("\n")}
+
+@app.post("/generate")
+async def generate(titles: list[str]):
+    csv_content = MakeCSV(titles)
+    return StreamingResponse(
+        io.StringIO(csv_content), 
+        media_type="text/csv", 
+        headers={"Content-Disposition": "attachment; filename=movies.csv"})
+
+@app.get("/")
+async def root():
+    with open(os.path.join(os.path.dirname(__file__), "static", "index.html"), encoding="utf-8") as f:
+        return HTMLResponse(f.read())
